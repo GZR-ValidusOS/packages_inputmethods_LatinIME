@@ -13,9 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package com.android.inputmethod.keyboard.emoji;
-
 import android.content.SharedPreferences;
 import android.content.res.Resources;
 import android.content.res.TypedArray;
@@ -24,7 +22,6 @@ import android.graphics.Rect;
 import android.os.Build;
 import android.util.Log;
 import android.util.Pair;
-
 import com.android.inputmethod.compat.BuildCompatUtils;
 import com.android.inputmethod.keyboard.Key;
 import com.android.inputmethod.keyboard.Keyboard;
@@ -32,17 +29,14 @@ import com.android.inputmethod.keyboard.KeyboardId;
 import com.android.inputmethod.keyboard.KeyboardLayoutSet;
 import com.android.inputmethod.latin.R;
 import com.android.inputmethod.latin.settings.Settings;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
-
 final class EmojiCategory {
     private final String TAG = EmojiCategory.class.getSimpleName();
-
     private static final int ID_UNSPECIFIED = -1;
     public static final int ID_RECENTS = 0;
     private static final int ID_PEOPLE = 1;
@@ -61,7 +55,6 @@ final class EmojiCategory {
     private static final int ID_EIGHT_SYMBOLS = 14;
     private static final int ID_EIGHT_FLAGS = 15;
     private static final int ID_EIGHT_SMILEY_PEOPLE_BORING = 16;
-
     public final class CategoryProperties {
         public final int mCategoryId;
         public final int mPageCount;
@@ -70,7 +63,6 @@ final class EmojiCategory {
             mPageCount = pageCount;
         }
     }
-
     private static final String[] sCategoryName = {
             "recents",
             "people",
@@ -89,7 +81,6 @@ final class EmojiCategory {
             "symbols2",
             "flags2",
             "smiley & people2" };
-
     private static final int[] sCategoryTabIconAttr = {
             R.styleable.EmojiPalettesView_iconEmojiRecentsTab,
             R.styleable.EmojiPalettesView_iconEmojiCategory1Tab,
@@ -108,7 +99,6 @@ final class EmojiCategory {
             R.styleable.EmojiPalettesView_iconEmojiCategory14Tab,
             R.styleable.EmojiPalettesView_iconEmojiCategory15Tab,
             R.styleable.EmojiPalettesView_iconEmojiCategory16Tab };
-
     private static final int[] sAccessibilityDescriptionResourceIdsForCategories = {
             R.string.spoken_descrption_emoji_category_recents,
             R.string.spoken_descrption_emoji_category_people,
@@ -127,7 +117,6 @@ final class EmojiCategory {
             R.string.spoken_descrption_emoji_category_symbols,
             R.string.spoken_descrption_emoji_category_flags,
             R.string.spoken_descrption_emoji_category_eight_smiley_people };
-
     private static final int[] sCategoryElementId = {
             KeyboardId.ELEMENT_EMOJI_RECENTS,
             KeyboardId.ELEMENT_EMOJI_CATEGORY1,
@@ -146,7 +135,6 @@ final class EmojiCategory {
             KeyboardId.ELEMENT_EMOJI_CATEGORY14,
             KeyboardId.ELEMENT_EMOJI_CATEGORY15,
             KeyboardId.ELEMENT_EMOJI_CATEGORY16 };
-
     private final SharedPreferences mPrefs;
     private final Resources mRes;
     private final int mMaxPageKeyCount;
@@ -156,10 +144,8 @@ final class EmojiCategory {
     private final ArrayList<CategoryProperties> mShownCategories = new ArrayList<>();
     private final ConcurrentHashMap<Long, DynamicGridKeyboard> mCategoryKeyboardMap =
             new ConcurrentHashMap<>();
-
     private int mCurrentCategoryId = EmojiCategory.ID_UNSPECIFIED;
     private int mCurrentCategoryPageId = 0;
-
     public EmojiCategory(final SharedPreferences prefs, final Resources res,
             final KeyboardLayoutSet layoutSet, final TypedArray emojiPaletteViewAttr) {
         mPrefs = prefs;
@@ -171,7 +157,6 @@ final class EmojiCategory {
             mCategoryTabIconId[i] = emojiPaletteViewAttr.getResourceId(
                     sCategoryTabIconAttr[i], 0);
         }
-
         int defaultCategoryId = EmojiCategory.ID_SYMBOLS;
         addShownCategoryId(EmojiCategory.ID_RECENTS);
         if (BuildCompatUtils.EFFECTIVE_SDK_INT >= Build.VERSION_CODES.KITKAT) {
@@ -196,21 +181,25 @@ final class EmojiCategory {
                     addShownCategoryId(EmojiCategory.ID_FLAGS);
                 }
             }
+        } else {
+            addShownCategoryId(EmojiCategory.ID_SYMBOLS);
         }
         addShownCategoryId(EmojiCategory.ID_EMOTICONS);
-
         DynamicGridKeyboard recentsKbd =
                 getKeyboard(EmojiCategory.ID_RECENTS, 0 /* categoryPageId */);
         recentsKbd.loadRecentKeys(mCategoryKeyboardMap.values());
-
         mCurrentCategoryId = Settings.readLastShownEmojiCategoryId(mPrefs, defaultCategoryId);
-        if (mCurrentCategoryId == EmojiCategory.ID_RECENTS &&
+        Log.i(TAG, "Last Emoji category id is " + mCurrentCategoryId);
+        if (!isShownCategoryId(mCurrentCategoryId)) {
+            Log.i(TAG, "Last emoji category " + mCurrentCategoryId +
+                    " is invalid, starting in " + defaultCategoryId);
+            mCurrentCategoryId = defaultCategoryId;
+        } else if (mCurrentCategoryId == EmojiCategory.ID_RECENTS &&
                 recentsKbd.getSortedKeys().isEmpty()) {
-            Log.i(TAG, "No recent emojis found, starting in category " + mCurrentCategoryId);
+            Log.i(TAG, "No recent emojis found, starting in category " + defaultCategoryId);
             mCurrentCategoryId = defaultCategoryId;
         }
     }
-
     private void addShownCategoryId(final int categoryId) {
         // Load a keyboard of categoryId
         getKeyboard(categoryId, 0 /* categoryPageId */);
@@ -218,36 +207,36 @@ final class EmojiCategory {
                 new CategoryProperties(categoryId, getCategoryPageCount(categoryId));
         mShownCategories.add(properties);
     }
-
+    private boolean isShownCategoryId(final int categoryId) {
+        for (final CategoryProperties prop : mShownCategories) {
+            if (prop.mCategoryId == categoryId) {
+                return true;
+            }
+        }
+        return false;
+    }
     public static String getCategoryName(final int categoryId, final int categoryPageId) {
         return sCategoryName[categoryId] + "-" + categoryPageId;
     }
-
     public int getCategoryId(final String name) {
         final String[] strings = name.split("-");
         return mCategoryNameToIdMap.get(strings[0]);
     }
-
     public int getCategoryTabIcon(final int categoryId) {
         return mCategoryTabIconId[categoryId];
     }
-
     public String getAccessibilityDescription(final int categoryId) {
         return mRes.getString(sAccessibilityDescriptionResourceIdsForCategories[categoryId]);
     }
-
     public ArrayList<CategoryProperties> getShownCategories() {
         return mShownCategories;
     }
-
     public int getCurrentCategoryId() {
         return mCurrentCategoryId;
     }
-
     public int getCurrentCategoryPageSize() {
         return getCategoryPageSize(mCurrentCategoryId);
     }
-
     public int getCategoryPageSize(final int categoryId) {
         for (final CategoryProperties prop : mShownCategories) {
             if (prop.mCategoryId == categoryId) {
@@ -258,29 +247,23 @@ final class EmojiCategory {
         // Should not reach here.
         return 0;
     }
-
     public void setCurrentCategoryId(final int categoryId) {
         mCurrentCategoryId = categoryId;
         Settings.writeLastShownEmojiCategoryId(mPrefs, categoryId);
     }
-
     public void setCurrentCategoryPageId(final int id) {
         mCurrentCategoryPageId = id;
     }
-
     public int getCurrentCategoryPageId() {
         return mCurrentCategoryPageId;
     }
-
     public void saveLastTypedCategoryPage() {
         Settings.writeLastTypedEmojiCategoryPageId(
                 mPrefs, mCurrentCategoryId, mCurrentCategoryPageId);
     }
-
     public boolean isInRecentTab() {
         return mCurrentCategoryId == EmojiCategory.ID_RECENTS;
     }
-
     public int getTabIdFromCategoryId(final int categoryId) {
         for (int i = 0; i < mShownCategories.size(); ++i) {
             if (mShownCategories.get(i).mCategoryId == categoryId) {
@@ -290,7 +273,6 @@ final class EmojiCategory {
         Log.w(TAG, "categoryId not found: " + categoryId);
         return 0;
     }
-
     // Returns the view pager's page position for the categoryId
     public int getPageIdFromCategoryId(final int categoryId) {
         final int lastSavedCategoryPageId =
@@ -306,16 +288,13 @@ final class EmojiCategory {
         Log.w(TAG, "categoryId not found: " + categoryId);
         return 0;
     }
-
     public int getRecentTabId() {
         return getTabIdFromCategoryId(EmojiCategory.ID_RECENTS);
     }
-
     private int getCategoryPageCount(final int categoryId) {
         final Keyboard keyboard = mLayoutSet.getKeyboard(sCategoryElementId[categoryId]);
         return (keyboard.getSortedKeys().size() - 1) / mMaxPageKeyCount + 1;
     }
-
     // Returns a pair of the category id and the category page id from the view pager's page
     // position. The category page id is numbered in each category. And the view page position
     // is the position of the current shown page in the view pager which contains all pages of
@@ -331,7 +310,6 @@ final class EmojiCategory {
         }
         return null;
     }
-
     // Returns a keyboard from the view pager's page position.
     public DynamicGridKeyboard getKeyboardFromPagePosition(final int position) {
         final Pair<Integer, Integer> categoryAndId =
@@ -341,18 +319,15 @@ final class EmojiCategory {
         }
         return null;
     }
-
     private static final Long getCategoryKeyboardMapKey(final int categoryId, final int id) {
         return (((long) categoryId) << Integer.SIZE) | id;
     }
-
     public DynamicGridKeyboard getKeyboard(final int categoryId, final int id) {
         synchronized (mCategoryKeyboardMap) {
             final Long categoryKeyboardMapKey = getCategoryKeyboardMapKey(categoryId, id);
             if (mCategoryKeyboardMap.containsKey(categoryKeyboardMapKey)) {
                 return mCategoryKeyboardMap.get(categoryKeyboardMapKey);
             }
-
             if (categoryId == EmojiCategory.ID_RECENTS) {
                 final DynamicGridKeyboard kbd = new DynamicGridKeyboard(mPrefs,
                         mLayoutSet.getKeyboard(KeyboardId.ELEMENT_EMOJI_RECENTS),
@@ -360,7 +335,6 @@ final class EmojiCategory {
                 mCategoryKeyboardMap.put(categoryKeyboardMapKey, kbd);
                 return kbd;
             }
-
             final Keyboard keyboard = mLayoutSet.getKeyboard(sCategoryElementId[categoryId]);
             final Key[][] sortedKeys = sortKeysIntoPages(
                     keyboard.getSortedKeys(), mMaxPageKeyCount);
@@ -380,7 +354,6 @@ final class EmojiCategory {
             return mCategoryKeyboardMap.get(categoryKeyboardMapKey);
         }
     }
-
     public int getTotalPageCountOfAllCategories() {
         int sum = 0;
         for (CategoryProperties properties : mShownCategories) {
@@ -388,7 +361,6 @@ final class EmojiCategory {
         }
         return sum;
     }
-
     private static Comparator<Key> EMOJI_KEY_COMPARATOR = new Comparator<Key>() {
         @Override
         public int compare(final Key lhs, final Key rhs) {
@@ -410,7 +382,6 @@ final class EmojiCategory {
             return lhs.getCode() < rhs.getCode() ? -1 : 1;
         }
     };
-
     private static Key[][] sortKeysIntoPages(final List<Key> inKeys, final int maxPageCount) {
         final ArrayList<Key> keys = new ArrayList<>(inKeys);
         Collections.sort(keys, EMOJI_KEY_COMPARATOR);
@@ -421,7 +392,6 @@ final class EmojiCategory {
         }
         return retval;
     }
-
     private static boolean canShowFlagEmoji() {
         Paint paint = new Paint();
         String switzerland = "\uD83C\uDDE8\uD83C\uDDED"; //  U+1F1E8 U+1F1ED Flag for Switzerland
@@ -437,7 +407,6 @@ final class EmojiCategory {
             // the width of the penguin.
         }
     }
-
     private static boolean canShowUnicodeEightEmoji() {
         Paint paint = new Paint();
         String cheese = "\uD83E\uDDC0"; //  U+1F9C0 Cheese wedge
